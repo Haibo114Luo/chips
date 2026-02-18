@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>德州扑克计分器</title>
+  <style>
+    /* 基础样式 */
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background-color: #f5f5f5;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+    header {
+      position: relative;
+      background-color: #333;
+      color: #fff;
+      padding: 10px;
+      text-align: center;
+    }
+    /* 菜单按钮 */
+    .menu-btn {
+      position: absolute;
+      left: 10px;
+      top: 10px;
+      background: none;
+      border: none;
+      color: #fff;
+      font-size: 24px;
+      cursor: pointer;
+    }
+    /* 顶部显示底池总额 */
+    .amount-display {
+      font-size: 24px;
+      cursor: pointer;
+      transition: transform 0.2s;
+      display: inline-block;
+    }
+    .amount-display.enlarged {
+      transform: scale(1.5);
+    }
+    /* 侧边菜单 */
+    .side-menu {
+      position: fixed;
+      top: 0;
+      left: -250px;
+      width: 250px;
+      height: 100%;
+      background: #444;
+      color: #fff;
+      overflow-y: auto;
+      transition: left 0.3s;
+      z-index: 100;
+      padding: 10px;
+    }
+    .side-menu.active {
+      left: 0;
+    }
+    .side-menu img {
+      width: 100%;
+      height: auto;
+      margin-bottom: 10px;
+    }
+    .side-menu p {
+      margin: 0;
+    }
+    /* 表格样式 */
+    .side-menu table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+    .side-menu table, .side-menu th, .side-menu td {
+      border: 1px solid #ccc;
+    }
+    .side-menu th, .side-menu td {
+      padding: 5px;
+      text-align: center;
+    }
+    /* 清空数据按钮 */
+    #btnClearPlayers {
+      margin-top: 10px;
+      padding: 8px 12px;
+      background-color: #cc0000;
+      color: #fff;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    /* 主体部分 */
+    main {
+      flex: 1;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      overflow-y: auto;
+    }
+    .hidden {
+      display: none;
+    }
+    .section {
+      width: 100%;
+      max-width: 500px;
+      background: #fff;
+      padding: 15px;
+      border-radius: 5px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      margin-bottom: 15px;
+    }
+    .section input {
+      width: 100%;
+      padding: 8px;
+      margin: 5px 0 10px;
+      box-sizing: border-box;
+    }
+    .section button {
+      padding: 10px;
+      font-size: 16px;
+      cursor: pointer;
+      border: none;
+      border-radius: 5px;
+    }
+    /* 下注显示 */
+    .bet-container {
+      text-align: center;
+      margin: 20px 0;
+    }
+    .bet-display {
+      font-size: 72px;
+      margin-bottom: 10px;
+    }
+    .bet-display .last-input {
+      font-size: 60px;
+      color: #666;
+      margin-left: 5px;
+    }
+    /* 自定义软键盘 */
+    .soft-keyboard {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 5px;
+      margin-bottom: 15px;
+    }
+    .soft-keyboard button {
+      padding: 15px;
+      font-size: 20px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      background: #eee;
+      cursor: pointer;
+    }
+    /* 计算器操作区 */
+    .calc-ops {
+      display: flex;
+      gap: 5px;
+      margin-bottom: 20px;
+    }
+    #btnAdd {
+      flex: 1.5;
+      font-size: 20px;
+      padding: 15px;
+    }
+    #btnResetCalc {
+      flex: 1;
+      font-size: 18px;
+      padding: 10px 15px;
+    }
+    /* 底部赢输按钮 */
+    .bottom-btns {
+      display: flex;
+      justify-content: space-between;
+      width: 100%;
+      max-width: 500px;
+    }
+    .bottom-btns button {
+      flex: 1;
+      margin: 0 5px;
+      padding: 15px;
+      font-size: 20px;
+      color: #fff;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    .btn-win {
+      background-color: green;
+    }
+    .btn-lose {
+      background-color: red;
+    }
+  </style>
+</head>
+<body>
+  <!-- 侧边菜单 -->
+  <div class="side-menu" id="sideMenu">
+    <button class="menu-btn" id="closeMenu" style="position:absolute; right:10px; top:10px;">✖</button>
+    <h3>Rule</h3>
+    <!-- 图片引用同目录下的本地文件 -->
+    <img src="rule.jpg" alt="菜单图片">
+    <p>右上角有个看不见的x可以关掉</p>
+    <!-- 用户记录表格 -->
+    <table id="playersTable">
+      <thead>
+        <tr>
+          <th>用户名</th>
+          <th>当前余额</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- 表格数据将由JS动态填充 -->
+      </tbody>
+    </table>
+    <!-- 清空数据按钮 -->
+    <button id="btnClearPlayers">清空数据</button>
+  </div>
+
+  <header>
+    <button class="menu-btn" id="openMenu">☰</button>
+    <!-- 显示底池总额（所有玩家当前下注额之和） -->
+    <div id="amountDisplay" class="amount-display">底池：0</div>
+  </header>
+
+  <main>
+    <!-- 玩家注册及设置起始金额 -->
+    <div class="section" id="setupSection">
+      <h2>玩家注册</h2>
+      <input type="text" id="usernameInput" placeholder="请输入用户名" required>
+      <input type="number" id="startAmountInput" placeholder="请输入起始金额" required>
+      <button id="btnSetup">开始游戏</button>
+    </div>
+
+    <!-- 游戏界面 -->
+    <div class="section hidden" id="gameSection">
+      <!-- 显示累计下注值：括号外为本次加注，括号内为累计下注 -->
+      <div class="bet-container">
+        <div class="bet-display" id="betDisplay">
+          <span class="main-bet">0</span><span class="last-input">(0)</span>
+        </div>
+      </div>
+      <!-- 自定义软键盘，显示当前输入值 -->
+      <div class="section" style="padding:10px; text-align:center;">
+        <div id="calcInputDisplay" style="font-size:28px; margin-bottom:10px;">0</div>
+        <div class="soft-keyboard" id="softKeyboard">
+          <button data-value="1">1</button>
+          <button data-value="2">2</button>
+          <button data-value="3">3</button>
+          <button data-value="4">4</button>
+          <button data-value="5">5</button>
+          <button data-value="6">6</button>
+          <button data-value="7">7</button>
+          <button data-value="8">8</button>
+          <button data-value="9">9</button>
+          <button data-action="clear">清除</button>
+          <button data-value="0">0</button>
+          <button data-value=".">.</button>
+        </div>
+      </div>
+      <!-- 计算器操作区 -->
+      <div class="calc-ops">
+        <button id="btnAdd">+</button>
+        <button id="btnResetCalc">重置</button>
+      </div>
+      <!-- 赢/输操作按钮 -->
+      <div class="bottom-btns">
+        <button class="btn-lose" id="btnLose">输</button>
+        <button class="btn-win" id="btnWin">赢</button>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    // 全局变量
+    let username = "";
+    let startAmount = 0;
+    let currentAmount = 0;    // 玩家当前余额
+    let currentBet = 0;       // 当前玩家本局累计下注额
+    let currentInput = "";
+    let lastInput = 0;        // 上次加注的数值
+
+    // DOM元素
+    const setupSection = document.getElementById('setupSection');
+    const gameSection = document.getElementById('gameSection');
+    const usernameInput = document.getElementById('usernameInput');
+    const startAmountInput = document.getElementById('startAmountInput');
+    const btnSetup = document.getElementById('btnSetup');
+    const amountDisplay = document.getElementById('amountDisplay');
+    const betDisplay = document.getElementById('betDisplay');
+    const calcInputDisplay = document.getElementById('calcInputDisplay');
+    const softKeyboard = document.getElementById('softKeyboard');
+    const btnAdd = document.getElementById('btnAdd');
+    const btnResetCalc = document.getElementById('btnResetCalc');
+    const btnWin = document.getElementById('btnWin');
+    const btnLose = document.getElementById('btnLose');
+    const openMenu = document.getElementById('openMenu');
+    const closeMenu = document.getElementById('closeMenu');
+    const sideMenu = document.getElementById('sideMenu');
+    const playersTableBody = document.querySelector('#playersTable tbody');
+    const btnClearPlayers = document.getElementById('btnClearPlayers');
+
+    // 侧边菜单控制
+    openMenu.addEventListener('click', () => {
+      sideMenu.classList.add('active');
+      updatePlayersTable(); // 打开菜单时刷新玩家记录
+    });
+    closeMenu.addEventListener('click', () => {
+      sideMenu.classList.remove('active');
+    });
+
+    // 注册并设置起始金额，开始游戏
+    btnSetup.addEventListener('click', () => {
+      username = usernameInput.value.trim();
+      const amt = parseFloat(startAmountInput.value);
+      if (!username) {
+        alert("请输入有效的用户名！");
+        return;
+      }
+      if (isNaN(amt)) {
+        alert("请输入有效的起始金额！");
+        return;
+      }
+      fetch('http://192.168.0.245:8001/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: username, start_amount: amt })
+      })
+      .then(response => response.json().then(data => ({ status: response.status, body: data })))
+      .then(result => {
+        if (result.status !== 200) {
+          alert("注册失败：" + (result.body.error || "未知错误"));
+          return;
+        }
+        startAmount = amt;
+        currentAmount = amt;
+        // 注册成功后更新底池显示（当前下注额默认为0）
+        updatePotDisplay();
+        setupSection.classList.add('hidden');
+        gameSection.classList.remove('hidden');
+      })
+      .catch(error => {
+        console.error("注册接口调用失败：", error);
+        alert("注册接口调用失败！");
+      });
+    });
+
+    // 更新顶部显示底池数据（所有玩家当前下注额之和）
+    function updatePotDisplay() {
+      fetch('http://192.168.0.245:8001/pot')
+        .then(response => response.json())
+        .then(data => {
+          amountDisplay.textContent = `底池：${Math.round(data.pot)}`;
+        })
+        .catch(error => {
+          console.error("获取底池数据失败:", error);
+        });
+    }
+
+    // 软键盘事件处理
+    softKeyboard.addEventListener('click', (e) => {
+      if (e.target.tagName.toLowerCase() !== "button") return;
+      const btn = e.target;
+      const value = btn.getAttribute('data-value');
+      const action = btn.getAttribute('data-action');
+      if (action === "clear") {
+        currentInput = "";
+      } else if (value) {
+        if (value === "." && currentInput.includes(".")) return;
+        currentInput += value;
+      }
+      updateCalcInputDisplay();
+    });
+
+    // 更新软键盘显示
+    function updateCalcInputDisplay() {
+      calcInputDisplay.textContent = currentInput === "" ? "0" : currentInput;
+    }
+
+    // 加注操作：增加本局下注额，并更新后端及底池显示
+    btnAdd.addEventListener('click', () => {
+      const val = parseFloat(currentInput);
+      if (!isNaN(val)) {
+        currentBet += val; // 累计下注额增加
+        lastInput = val;   // 记录本次加注
+        updateBetDisplay();
+        updateBackendBet(); // 同步更新后端当前下注额
+        updatePotDisplay();
+      }
+      currentInput = "";
+      updateCalcInputDisplay();
+    });
+
+    // 重置下注：清零本局下注额，更新后端记录
+    btnResetCalc.addEventListener('click', () => {
+      currentBet = 0;
+      lastInput = 0;
+      updateBetDisplay();
+      updateBackendBet();
+      updatePotDisplay();
+    });
+
+    // 更新下注显示：括号外显示本次加注，括号内显示累计下注额
+    function updateBetDisplay() {
+      betDisplay.innerHTML = `<span class="main-bet">${Math.round(lastInput)}</span><span class="last-input">(${Math.round(currentBet)})</span>`;
+    }
+
+    // 赢/输操作：根据当前下注更新玩家余额，并重置下注额
+    btnWin.addEventListener('click', () => {
+      currentAmount += currentBet;
+      updateBackendAmount();  // 更新玩家余额
+      resetBet();             // 重置下注额
+      updatePotDisplay();
+    });
+    btnLose.addEventListener('click', () => {
+      currentAmount -= currentBet;
+      updateBackendAmount();
+      resetBet();
+      updatePotDisplay();
+    });
+
+    // 重置下注：清零本局下注额，并同步后端
+    function resetBet() {
+      currentBet = 0;
+      lastInput = 0;
+      updateBetDisplay();
+      updateBackendBet(); // 将后端的 current_bet 置为0
+    }
+
+    // 更新玩家余额接口
+    function updateBackendAmount() {
+      fetch('http://192.168.0.245:8001/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: username,
+          current_amount: currentAmount
+        })
+      })
+      .then(response => response.json().then(data => ({ status: response.status, body: data })))
+      .then(result => {
+        if (result.status !== 200) {
+          alert("更新金额失败：" + (result.body.error || "未知错误"));
+        } else {
+          console.log("余额更新成功");
+          updatePlayersTable(); // 更新侧边菜单显示的余额
+        }
+      })
+      .catch(err => {
+        console.error("调用 /update 接口失败:", err);
+      });
+    }
+
+    // 更新当前玩家下注额接口
+    function updateBackendBet() {
+      fetch('http://192.168.0.245:8001/update_bet', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: username,
+          current_bet: currentBet
+        })
+      })
+      .then(response => response.json())
+      .then(result => {
+        if (result.status && result.status !== 200) {
+          alert("更新下注失败：" + (result.error || "未知错误"));
+        }
+      })
+      .catch(err => {
+        console.error("调用 /update_bet 接口失败:", err);
+      });
+    }
+
+    // 更新侧边菜单中的玩家记录表格（显示用户名和余额）
+    function updatePlayersTable() {
+      fetch('http://192.168.0.245:8001/players')
+        .then(response => response.json())
+        .then(data => {
+          playersTableBody.innerHTML = "";
+          data.forEach(player => {
+            const row = document.createElement("tr");
+            const tdUsername = document.createElement("td");
+            tdUsername.textContent = player.username;
+            const tdAmount = document.createElement("td");
+            tdAmount.textContent = Math.round(player.current_amount);
+            row.appendChild(tdUsername);
+            row.appendChild(tdAmount);
+            playersTableBody.appendChild(row);
+          });
+        })
+        .catch(error => {
+          console.error("获取玩家数据失败:", error);
+        });
+    }
+
+    // 清空所有玩家数据
+    btnClearPlayers.addEventListener('click', () => {
+      if (!confirm("确定要删除所有玩家数据吗？")) return;
+      fetch('http://192.168.0.245:8001/clear', {
+        method: 'POST'
+      })
+      .then(response => response.json().then(data => ({ status: response.status, body: data })))
+      .then(result => {
+        if (result.status !== 200) {
+          alert("清空失败：" + (result.body.error || "未知错误"));
+        } else {
+          alert("已清空所有玩家数据！");
+          updatePlayersTable();
+          updatePotDisplay();
+        }
+      })
+      .catch(err => {
+        console.error("调用 /clear 接口失败:", err);
+      });
+    });
+
+    // 点击顶部底池显示区域时放大显示
+    amountDisplay.addEventListener('click', () => {
+      amountDisplay.classList.toggle('enlarged');
+      setTimeout(() => {
+        amountDisplay.classList.remove('enlarged');
+      }, 800);
+    });
+  </script>
+</body>
+</html>
